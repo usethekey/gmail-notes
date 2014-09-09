@@ -1,0 +1,106 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset=utf-8 />
+    <title>Inkwell</title>
+    <link href='css/highlight.min.css' rel='stylesheet'>
+    <style>
+    #style {
+        position:absolute;
+        top:10px;
+        right:10px;
+    }
+    </style>
+</head>
+<body>
+<select id='style'>
+    <option value='css/base/latest/base.css'>base</option>
+    <option value='css/gmail.css'>gmail</option>
+</select>
+<div class='pad2 margin2 col8'></div>
+<div id='content' class='prose margin2 pad4 col8'></div>
+<script src='js/highlight.min.js'></script>
+<script src='js/marked.js'></script>
+<script>
+var content = document.getElementById('content');
+
+function xhr(url, callback) {
+    var x = new XMLHttpRequest(),
+        twoHundred = /^[23]0\d$/;
+    x.onreadystatechange = function() {
+        if (4 == x.readyState && 0 !== x.status) {
+            if (twoHundred.test(x.status)) callback(null, x);
+            else callback(x, null);
+        }
+    };
+    x.onerror = function(e) { return callback(e, null); };
+    x.open('GET', url);
+    x.send();
+}
+
+function values(o) {
+    var v = [];
+    for (var i in o) if (o.hasOwnProperty(i)) v.push(o[i]);
+    return v;
+}
+
+marked.setOptions({
+    gfm: true,
+    tables: true,
+    breaks: false,
+    pedantic: false,
+    sanitize: false,
+    smartLists: true,
+    langPrefix: 'language-',
+    highlight: function (code, lang) {
+        if (!lang) return code;
+
+        // Aliases
+        if (lang === 'js') lang = 'javascript';
+
+        try {
+            return hljs.highlight(lang, code).value;
+        } catch(e) {
+            return hljs.highlightAuto(code).value;
+        }
+    }
+});
+
+function load(gist) {
+    var gistUrl = 'https://api.github.com/gists/' + gist;
+    xhr(gistUrl, function(err, x) {
+        if (err) return content.innerHTML = 'Error loading Gist';
+        else var d = JSON.parse(x.responseText);
+        var c = (values(d.files || {}).filter(function(file) {
+            return (file.filename.indexOf('.md') !== -1 ||
+                    file.filename.indexOf('.txt') !== -1 ||
+                    file.language === 'Markdown');
+        })[0] || {}).content;
+        if (c) content.innerHTML = marked(c);
+    });
+}
+
+function loadHash() {
+    load(window.location.hash.length > 1 ?
+        window.location.hash.substr(1) : 'a2bb1ca5d2bbf1dc398d');
+}
+
+var style = document.getElementById('style');
+
+function updateStyle() {
+    var rem = document.head.querySelectorAll('link#custom-style');
+    for (var i = 0; i < rem.length; i++) document.head.removeChild(rem[i]);
+    var link = document.head.appendChild(document.createElement('link'));
+    link.href = this.value;
+    link.id = 'custom-style';
+    link.rel = 'stylesheet';
+};
+
+style.onchange = updateStyle;
+
+updateStyle.apply(style);
+
+loadHash();
+</script>
+</body>
+</html> 
